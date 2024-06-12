@@ -568,6 +568,14 @@ const char AutoConnectCore<T>::_ELM_HTML_HEAD[] PROGMEM = {
   "<html>"
   "<head>"
   "<meta charset=\"UTF-8\" name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+  "<script>navigation.addEventListener('navigate', (event) => {"
+  "  if (event.destination.url.startsWith('intent')) {"
+  "    setTimeout(() => {"
+  "      window.stop();"
+  "      window.location = 'http://' + event.destination.url.split('intent:')[1].split('#Intent')[0];"
+  "    }, 100);"
+  "  }"
+  "});</script>"
 };
 
 /**< LuxBar menu element. */
@@ -915,6 +923,7 @@ const char  AutoConnectCore<T>::_PAGE_SUCCESS[] PROGMEM = {
         "</table>"
       "</div>"
     "</div>"
+    "<script>fetch('/acstop').then().catch(error => console.log(error)); setTimeout(() => window.location = 'http://{{LOCAL_IP}}', 2600);</script>" //1000
   "</body>"
   "</html>"
 };
@@ -1553,7 +1562,9 @@ String AutoConnectCore<T>::_token_WIFI_STATUS(PageArgument& args) {
  */
 template<typename T>
 String AutoConnectCore<T>::_attachMenuItem(const AC_MENUITEM_t item) {
+  bool ace = (WiFi.getMode() & WIFI_AP);
   static const char _liTempl[]  PROGMEM = "<li class=\"lb-item\"%s><a href=\"%s\">%s</a></li>";
+  static const char _liTemp2[]  PROGMEM = "<li class=\"lb-item\"%s><a href=\"intent:%s%s#Intent;scheme=http;end\">%s</a></li>";
   PGM_P id = PSTR("");
   PGM_P link;
   PGM_P label;
@@ -1590,9 +1601,16 @@ String AutoConnectCore<T>::_attachMenuItem(const AC_MENUITEM_t item) {
     label = nullptr;
     break;
   }
-  char  li[128] = { '\0' };
-  if (!!id && !!link && !!label)
-    snprintf(li, sizeof(li), (PGM_P)_liTempl, id, link, label);
+  char li[128] = { '\0' };
+  if (!!id && !!link && !!label) {
+    if(ace) {
+      char host[16];
+      WiFi.softAPIP().toString().toCharArray(host, 16);
+      snprintf(li, sizeof(li), (PGM_P)_liTemp2, id, host, link, label);
+    }
+    else
+      snprintf(li, sizeof(li), (PGM_P)_liTempl, id, link, label);
+  }
   return String(li);
 }
 
